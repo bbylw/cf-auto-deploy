@@ -11,6 +11,10 @@ After the first `wrangler deploy --temporary`:
 4. The 60-minute clock keeps ticking from the first deploy; the reused output shows remaining time (e.g. `Claim within: 54 minutes`)
 5. Account expires if not claimed within 60 minutes
 
+> ⚠️ **Never run `wrangler logout` during iteration** — it destroys the cached temp account. The next `--temporary` deploy creates a *new* account with a different subdomain, so all prior Workers become inaccessible at their old URLs. Only logout if you intentionally want to reset.
+>
+> ⚠️ **Never run `wrangler kv namespace create` or other resource commands** — these don't support `--temporary` and trigger OAuth login, which disables temporary mode (error: `You're already authenticated... --temporary can't be used`). Recovery requires `wrangler logout`, which destroys the temp account.
+
 ## Flow
 
 ```

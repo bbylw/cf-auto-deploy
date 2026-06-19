@@ -67,8 +67,12 @@ npx wrangler tail
 - **60-minute lifetime** for unclaimed temporary accounts
 - **No custom domains** (use `*.workers.dev` only)
 - **Resources are temporary** — KV, D1, R2 deleted with account if not claimed
-- ⚠️ **`compatibility_date` must be a past date** — future dates cause deploy failure. Safe default: `2025-06-20`
+- ⚠️ **`compatibility_date` must be a past date** — future dates cause deploy failure (API error 10021). Safe default: `2025-06-20`
 - ⚠️ **Always pass `--temporary`** when deploying — bare `wrangler deploy` triggers OAuth login
+- ⚠️ **Worker `name` must be ≤ 63 chars** — longer names fail at API stage (error 100132), wasting upload time. Pre-check before deploy
+- ⚠️ **KV/D1/R2 bindings NOT supported** in temporary accounts — `wrangler kv namespace create` doesn't accept `--temporary` and triggers OAuth login, which **disables temporary mode**. Only use bindings after claiming the account
+- ⚠️ **First-time use requires accepting ToS** — after `wrangler logout`, the next `--temporary` deploy prompts for Terms of Service acceptance. Pipe `yes`: `echo "yes" | npx wrangler deploy --temporary`
+- ⚠️ **`wrangler logout` destroys the temp account** — logging out creates a *new* temp account on next deploy (different subdomain, all prior Workers lost). Only logout intentionally
 - Check [docs](https://developers.cloudflare.com/workers/platform/claim-deployments/) for current capabilities
 
 ## Templates

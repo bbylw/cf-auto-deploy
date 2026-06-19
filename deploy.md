@@ -62,26 +62,46 @@ export default {
 } satisfies ExportedHandler<Env>;
 ```
 
-## Step 4: Deploy with Temporary Account
+## Step 4: Pre-Deploy Validation
+
+Before running `wrangler deploy`, **always** run these local checks to avoid wasting upload time on API-stage failures:
+
+| Check | How | On Failure |
+|-------|-----|-----------|
+| `compatibility_date` not in future | Read `wrangler.toml`, compare to today | Change to a past date (e.g. `2025-06-20`) |
+| `name` ≤ 63 chars | `len(name)` in config | Shorten to kebab-case slug |
+| `main` file exists | Check file at `main` path | Fix path or create the file |
+| No KV/D1/R2 bindings | Scan `wrangler.toml` for `[[kv_namespaces]]`, `[[d1_databases]]`, `[[r2_buckets]]` | Remove bindings (temp accounts don't support them) or instruct user to claim first |
+| TypeScript compiles | `npx tsc --noEmit` (optional) | Fix syntax errors |
+
+> **Why pre-check?** Wrangler validates `compatibility_date` and `name` length only at the API stage (after upload), wasting 2-5 seconds per failed attempt. Local checks are instant.
+
+## Step 5: Deploy with Temporary Account
 
 ```bash
 npx wrangler deploy --temporary
 ```
 
+**First-time use (or after `wrangler logout`)**: Wrangler prompts to accept Cloudflare's Terms of Service. Pipe `yes` to auto-accept in non-interactive contexts:
+
+```bash
+echo "yes" | npx wrangler deploy --temporary
+```
+
 What happens:
 1. Wrangler detects no authenticated session
-2. With `--temporary`, Cloudflare provisions a throwaway account
-3. Wrangler caches the temporary API token locally (for iteration)
+2. With `--temporary`, Cloudflare provisions a throwaway account (solves a proof-of-work challenge)
+3. Wrangler caches the temporary account reference locally (for iteration via `--temporary`)
 4. Worker is deployed, preview URL + claim URL returned
 
-## Step 5: Parse Output
+## Step 6: Parse Output
 
 Extract from wrangler output:
 - **Preview URL**: `https://<worker-name>.<random-subdomain>.workers.dev`
 - **Claim URL**: `https://dash.cloudflare.com/?claim=...`
 - **Deployment ID**: for later reference
 
-## Step 6: Report to User
+## Step 7: Report to User
 
 ```
 ✅ Deployed successfully!
@@ -103,15 +123,18 @@ curl -sS -o /dev/null -w "%{http_code}" "<preview-url>"
 
 ## Error Handling
 
-| Error | Cause | Fix |
-|-------|-------|-----|
-| `wrangler: command not found` | Not installed | `npm install -g wrangler@latest` |
-| `Authentication required` / `Attempting to login via OAuth...` | `--temporary` flag missing | Re-run with `--temporary` |
-| `Compatibility date invalid` / `compatibility date is in the future` | `compatibility_date` is a future date | Edit `wrangler.toml`, change to a past date (e.g. `2025-06-20`) |
-| `Worker name too long` | Name > 63 chars | Shorten in `wrangler.toml` |
-| `Module not found` | Wrong `main` path | Check `main` points to existing file |
-| `Accepting the terms` prompt | First-time use | Pipe `yes` or run interactively once |
-| Network error | Connectivity | Retry, check internet connection |
+| Error | Code | Cause | Fix |
+|-------|------|-------|-----|
+| `wrangler: command not found` | — | Not installed | `npm install -g wrangler@latest` |
+| `Attempting to login via OAuth...` | — | `--temporary` flag missing, or OAuth session active | Re-run with `--temporary`; if session active, run `wrangler logout` first |
+| `You're already authenticated... --temporary can't be used` | — | OAuth login was triggered (e.g. by `kv namespace create`) | Run `wrangler logout`, then retry with `--temporary` |
+| `Can't set compatibility date in the future` | 10021 | `compatibility_date` is a future date | Edit `wrangler.toml`, change to a past date (e.g. `2025-06-20`) |
+| `Worker name is too long to be used as a subdomain` | 100132 | Name > 63 chars | Shorten in `wrangler.toml` (pre-check in Step 4) |
+| `KV namespace '...' is not valid` | 10042 | KV binding with non-existent namespace ID | Remove KV binding (temp accounts can't create namespaces) or claim account first |
+| `The entry-point file at "..." was not found` | — | Wrong `main` path | Check `main` points to existing file |
+| `Build failed with N errors` | — | TypeScript/syntax error | Fix code per error output (esbuild reports line:col) |
+| `? You must accept Cloudflare's Terms of Service` | — | First-time use after logout | Pipe `yes`: `echo "yes" \| npx wrangler deploy --temporary` |
+| Network error | — | Connectivity | Retry, check internet connection |
 
 ## Examples
 
