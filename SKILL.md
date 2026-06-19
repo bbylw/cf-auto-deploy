@@ -25,7 +25,7 @@ This skill has three built-in capabilities. **Read the corresponding detail file
 | Capability          | Purpose                              | Detail File                |
 | ------------------- | ------------------------------------ | -------------------------- |
 | 🚀 **Deploy** (core) | First-time deploy with `--temporary` | [deploy.md](./deploy.md)   |
-| 🔁 **Iterate**       | Update code, reuse temp token        | [iterate.md](./iterate.md) |
+| 🔁 **Iterate**       | Update code, reuse temp account      | [iterate.md](./iterate.md) |
 | 🧪 **Verify**        | Test endpoints, validate behavior    | [verify.md](./verify.md)   |
 
 ## Workflow
@@ -36,7 +36,7 @@ This skill has three built-in capabilities. **Read the corresponding detail file
 
 1. **Deploy** ([deploy.md](./deploy.md)): detect project → generate config → `wrangler deploy --temporary` → return preview URL + claim URL
 2. **Verify** ([verify.md](./verify.md)): smoke test the deployment immediately
-3. **Iterate** ([iterate.md](./iterate.md)): user requests changes → edit code → `wrangler deploy` (reuses temp token) → verify again
+3. **Iterate** ([iterate.md](./iterate.md)): user requests changes → edit code → `wrangler deploy --temporary` (reuses temp account, shows "(reused)") → verify again
 4. **Claim**: user opens claim URL in browser → account becomes permanent
 
 ## Prerequisites
@@ -50,8 +50,8 @@ This skill has three built-in capabilities. **Read the corresponding detail file
 # First deploy (creates temporary account)
 npx wrangler deploy --temporary
 
-# Iterate (reuses cached temp token)
-npx wrangler deploy
+# Iterate (reuses cached temp account — keep --temporary!)
+npx wrangler deploy --temporary
 
 # Verify
 curl -sS -o /dev/null -w "%{http_code}" "<preview-url>"
@@ -60,11 +60,15 @@ curl -sS -o /dev/null -w "%{http_code}" "<preview-url>"
 npx wrangler tail
 ```
 
+> ⚠️ **Iteration rule**: Always pass `--temporary` when redeploying. A bare `wrangler deploy` triggers OAuth login (fails in agent context) instead of reusing the temp account.
+
 ## Key Constraints
 
 - **60-minute lifetime** for unclaimed temporary accounts
 - **No custom domains** (use `*.workers.dev` only)
 - **Resources are temporary** — KV, D1, R2 deleted with account if not claimed
+- ⚠️ **`compatibility_date` must be a past date** — future dates cause deploy failure. Safe default: `2025-06-20`
+- ⚠️ **Always pass `--temporary`** when deploying — bare `wrangler deploy` triggers OAuth login
 - Check [docs](https://developers.cloudflare.com/workers/platform/claim-deployments/) for current capabilities
 
 ## Templates

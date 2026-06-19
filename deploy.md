@@ -28,7 +28,7 @@ If `wrangler.toml` does not exist, generate:
 ```toml
 name = "<project-name>"
 main = "src/index.ts"
-compatibility_date = "<today's-date>"
+compatibility_date = "<recent-past-date>"
 
 # For static assets:
 # [assets]
@@ -38,8 +38,13 @@ compatibility_date = "<today's-date>"
 Rules:
 - `name`: kebab-case from directory name, max 63 chars
 - `main`: Worker entry file
-- `compatibility_date`: today (YYYY-MM-DD)
+- `compatibility_date`: a **past or today's date** in `YYYY-MM-DD` format
+  - ⚠️ **Must NOT be a future date** — Wrangler rejects future dates with `Compatibility date invalid`
+  - Safe default: `2025-06-20` (or any date within the last year)
+  - Do not use "today" if you are unsure of the current date — prefer a known-safe past date
 - Do NOT add `account_id` — temporary accounts don't need it
+
+> **Pre-deploy check**: Always open `wrangler.toml` and verify `compatibility_date` is not in the future before running `wrangler deploy`. This is the #1 cause of first-deploy failures.
 
 ## Step 3: Ensure Source File Exists
 
@@ -101,10 +106,11 @@ curl -sS -o /dev/null -w "%{http_code}" "<preview-url>"
 | Error | Cause | Fix |
 |-------|-------|-----|
 | `wrangler: command not found` | Not installed | `npm install -g wrangler@latest` |
-| `Authentication required` | `--temporary` flag missing | Re-run with `--temporary` |
-| `Compatibility date invalid` | Wrong date format | Use `YYYY-MM-DD` |
+| `Authentication required` / `Attempting to login via OAuth...` | `--temporary` flag missing | Re-run with `--temporary` |
+| `Compatibility date invalid` / `compatibility date is in the future` | `compatibility_date` is a future date | Edit `wrangler.toml`, change to a past date (e.g. `2025-06-20`) |
 | `Worker name too long` | Name > 63 chars | Shorten in `wrangler.toml` |
 | `Module not found` | Wrong `main` path | Check `main` points to existing file |
+| `Accepting the terms` prompt | First-time use | Pipe `yes` or run interactively once |
 | Network error | Connectivity | Retry, check internet connection |
 
 ## Examples

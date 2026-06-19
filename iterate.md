@@ -1,31 +1,33 @@
 # 🔁 Iterate Capability
 
-Update a previously deployed Worker within the 60-minute temporary account window. Reuses the cached temporary token — no re-authentication needed.
+Update a previously deployed Worker within the 60-minute temporary account window. Reuses the cached temporary account — no re-authentication needed.
 
-## How Token Caching Works
+## How Temporary Account Reuse Works
 
 After the first `wrangler deploy --temporary`:
-1. Wrangler stores the temporary API token in local config cache
-2. Subsequent `wrangler deploy` commands (without `--temporary`) **automatically reuse** the same temporary account
-3. No need to pass `--temporary` again — just `wrangler deploy`
-4. Token expires when the temporary account is deleted (60 min) or claimed
+1. Wrangler stores the temporary account reference locally
+2. Subsequent `wrangler deploy --temporary` commands **reuse the same temporary account** (output shows `Account: <name> (reused)`)
+3. **You must keep passing `--temporary`** — a bare `wrangler deploy` will attempt standard OAuth login, NOT reuse the temp account
+4. The 60-minute clock keeps ticking from the first deploy; the reused output shows remaining time (e.g. `Claim within: 54 minutes`)
+5. Account expires if not claimed within 60 minutes
 
 ## Flow
 
 ```
-Confirm Prior Deploy → Apply Code Changes → Redeploy → Verify → Report
+Confirm Prior Deploy → Apply Code Changes → Redeploy (--temporary) → Verify → Report
 ```
 
 ## Step 1: Confirm Prior Deployment
 
 ```bash
-npx wrangler whoami
+npx wrangler deploy --temporary --dry-run
 ```
 
-If this fails or shows no account:
-- 60-minute window may have expired
-- Cache may have been cleared
-- → Fall back to [deploy.md](./deploy.md) for a fresh temporary deployment
+Or check the previous deploy output for `Account: <name> (reused)` and the remaining claim window.
+
+If the 60-minute window has expired:
+- `wrangler deploy --temporary` will create a **new** temporary account (new name, new URL)
+- → The preview URL will change; inform the user
 
 ## Step 2: Apply Code Changes
 
@@ -34,13 +36,22 @@ Make the requested changes to the Worker source:
 - Update routes, handlers, logic, responses as requested
 - Keep changes minimal and focused
 
-## Step 3: Redeploy (No `--temporary` Needed)
+## Step 3: Redeploy (Keep `--temporary`)
 
 ```bash
-npx wrangler deploy
+npx wrangler deploy --temporary
 ```
 
-Reuses the cached temporary account token. The preview URL stays the same — only the deployed code changes.
+Reuses the cached temporary account. The preview URL stays the same — only the deployed code changes. Output confirms reuse:
+
+```
+Temporary account ready:
+        Account: <name> (reused)
+        Claim within: <minutes> minutes
+        Claim URL: <same-claim-url>
+```
+
+> ⚠️ **Do NOT drop `--temporary`** during iteration. A bare `wrangler deploy` triggers OAuth login and will fail in an agent context (no browser to complete the flow).
 
 ## Step 4: Verify the Change
 
@@ -117,11 +128,12 @@ The 60-minute clock starts from the **first** temporary deploy:
 
 | Error | Cause | Fix |
 |-------|-------|-----|
-| `Authentication required` | Token expired or cache cleared | Run `wrangler deploy --temporary` again (new temp account) |
-| `Worker not found` | Account deleted (60 min passed) | Start fresh with [deploy.md](./deploy.md) |
+| `Attempting to login via OAuth...` | Ran bare `wrangler deploy` without `--temporary` | Re-run with `--temporary` flag to reuse temp account |
+| `Worker not found` | Account deleted (60 min passed) | Start fresh with [deploy.md](./deploy.md) — a new temp account and URL will be created |
 | `Build failed` | TypeScript/syntax error | Fix the error, retry deploy |
 | `Rate limit exceeded` | Too many deploys too fast | Wait a few seconds, retry |
 | `Binding not found` | Referenced resource was deleted | Remove binding or recreate with new temp account |
+| New account name appears | 60-min window expired | Inform user the URL changed; update references |
 
 ## Best Practices
 

@@ -62,8 +62,8 @@ npx wrangler deploy --temporary
 ### Iterate on the deployment
 
 ```bash
-# After editing src/index.ts, redeploy (reuses temp token)
-npx wrangler deploy
+# After editing src/index.ts, redeploy (keep --temporary to reuse account)
+npx wrangler deploy --temporary
 ```
 
 ### Verify the deployment
@@ -111,9 +111,10 @@ Static site served via the `[assets]` binding, with an example `/api/time` endpo
 - Includes the Worker + all bindings (KV, D1, R2, etc.)
 
 ### Token Caching
-- After first `--temporary` deploy, Wrangler caches the token locally
-- Subsequent deploys don't need `--temporary` — just `wrangler deploy`
-- Token expires with the temporary account (60 min)
+- After first `--temporary` deploy, Wrangler caches the temporary account reference locally
+- Subsequent deploys **must still pass `--temporary`** to reuse the account (output shows `Account: <name> (reused)`)
+- A bare `wrangler deploy` triggers OAuth login instead — do NOT drop the flag during iteration
+- Account expires after 60 minutes if not claimed
 
 ### Preview URL
 - Format: `https://<worker-name>.<random>.workers.dev`
@@ -133,7 +134,7 @@ Static site served via the `[assets]` binding, with an example `/api/time` endpo
 | Error | Cause | Fix |
 |-------|-------|-----|
 | `wrangler: command not found` | Not installed | `npm install -g wrangler@latest` |
-| `Authentication required` | `--temporary` missing or token expired | Run `wrangler deploy --temporary` (fresh) |
+| `Authentication required` | Ran bare `wrangler deploy` without `--temporary` | Re-run with `--temporary` to reuse temp account |
 | `Worker not found` | Account deleted (60 min passed) | Start fresh with `--temporary` |
 | `Build failed` | TypeScript/syntax error | Fix error, retry deploy |
 | `Rate limit exceeded` | Too many deploys | Wait a few seconds, retry |

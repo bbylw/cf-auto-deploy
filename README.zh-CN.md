@@ -63,8 +63,8 @@ npx wrangler deploy --temporary
 ### 迭代部署
 
 ```bash
-# 编辑 src/index.ts 后，重新部署（复用临时 token）
-npx wrangler deploy
+# 编辑 src/index.ts 后，重新部署（保留 --temporary 以复用账户）
+npx wrangler deploy --temporary
 ```
 
 ### 验证部署
@@ -112,9 +112,10 @@ curl -sS "<预览-url>"
 - 包含 Worker 及所有绑定资源（KV、D1、R2 等）
 
 ### Token 缓存
-- 首次 `--temporary` 部署后，Wrangler 在本地缓存 token
-- 后续部署无需 `--temporary` —— 直接 `wrangler deploy`
-- token 随临时账户过期（60 分钟）而失效
+- 首次 `--temporary` 部署后，Wrangler 在本地缓存临时账户引用
+- 后续部署**仍需传递 `--temporary`** 才能复用账户（输出显示 `Account: <name> (reused)`）
+- 不带 `--temporary` 的 `wrangler deploy` 会触发 OAuth 登录 —— 迭代时切勿省略该标志
+- 账户在 60 分钟内未认领则过期
 
 ### 预览 URL
 - 格式：`https://<worker-name>.<random>.workers.dev`
@@ -131,14 +132,14 @@ curl -sS "<预览-url>"
 
 ## 错误处理
 
-| 错误                          | 原因                             | 修复方法                               |
-| ----------------------------- | -------------------------------- | -------------------------------------- |
-| `wrangler: command not found` | 未安装 Wrangler                  | `npm install -g wrangler@latest`       |
-| `Authentication required`     | 缺少 `--temporary` 或 token 过期 | 重新运行 `wrangler deploy --temporary` |
-| `Worker not found`            | 账户已删除（超过 60 分钟）       | 使用 `--temporary` 重新开始            |
-| `Build failed`                | TypeScript/语法错误              | 修复错误后重试部署                     |
-| `Rate limit exceeded`         | 部署过于频繁                     | 等待几秒后重试                         |
-| 500 Internal Error            | 代码异常                         | 通过 `wrangler tail` 查看日志          |
+| 错误                          | 原因                                        | 修复方法                            |
+| ----------------------------- | ------------------------------------------- | ----------------------------------- |
+| `wrangler: command not found` | 未安装 Wrangler                             | `npm install -g wrangler@latest`    |
+| `Authentication required`     | 未带 `--temporary` 运行了 `wrangler deploy` | 重新加上 `--temporary` 复用临时账户 |
+| `Worker not found`            | 账户已删除（超过 60 分钟）                  | 使用 `--temporary` 重新开始         |
+| `Build failed`                | TypeScript/语法错误                         | 修复错误后重试部署                  |
+| `Rate limit exceeded`         | 部署过于频繁                                | 等待几秒后重试                      |
+| 500 Internal Error            | 代码异常                                    | 通过 `wrangler tail` 查看日志       |
 
 ## 设计原则
 
