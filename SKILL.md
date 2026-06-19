@@ -70,8 +70,8 @@ npx wrangler tail
 - ⚠️ **`compatibility_date` must be a past date** — future dates cause deploy failure (API error 10021). Safe default: `2025-06-20`
 - ⚠️ **Always pass `--temporary`** when deploying — bare `wrangler deploy` triggers OAuth login
 - ⚠️ **Worker `name` must be ≤ 63 chars** — longer names fail at API stage (error 100132), wasting upload time. Pre-check before deploy
-- ⚠️ **KV/D1/R2 bindings NOT supported** in temporary accounts — `wrangler kv namespace create` doesn't accept `--temporary` and triggers OAuth login, which **disables temporary mode**. Only use bindings after claiming the account
-- ⚠️ **First-time use requires accepting ToS** — after `wrangler logout`, the next `--temporary` deploy prompts for Terms of Service acceptance. Pipe `yes`: `echo "yes" | npx wrangler deploy --temporary`
+- ⚠️ **KV/D1/R2 resources ARE supported** in temporary accounts (wrangler 4.103.0+) — `wrangler kv namespace create` / `d1 create` / `r2 bucket create` accept `--temporary`. First-time use requires ToS acceptance (pipe `yes`). Resources are temporary (deleted if account expires unclaimed). After claiming, resources become permanent
+- ⚠️ **First-time use requires accepting ToS** — after `wrangler logout`, the next `--temporary` deploy prompts for Terms of Service acceptance. Pipe `yes`: Bash `echo "yes" | npx wrangler deploy --temporary` · PowerShell `"yes" | npx wrangler deploy --temporary` (PowerShell `echo` pipes a String object, use bare string instead)
 - ⚠️ **`wrangler logout` destroys the temp account** — logging out creates a *new* temp account on next deploy (different subdomain, all prior Workers lost). Only logout intentionally
 - Check [docs](https://developers.cloudflare.com/workers/platform/claim-deployments/) for current capabilities
 

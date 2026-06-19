@@ -13,7 +13,7 @@ After the first `wrangler deploy --temporary`:
 
 > ⚠️ **Never run `wrangler logout` during iteration** — it destroys the cached temp account. The next `--temporary` deploy creates a *new* account with a different subdomain, so all prior Workers become inaccessible at their old URLs. Only logout if you intentionally want to reset.
 >
-> ⚠️ **Never run `wrangler kv namespace create` or other resource commands** — these don't support `--temporary` and trigger OAuth login, which disables temporary mode (error: `You're already authenticated... --temporary can't be used`). Recovery requires `wrangler logout`, which destroys the temp account.
+> ⚠️ **Resource commands (kv/d1/r2) require `--temporary` flag** — always pass `--temporary` when creating resources in a temp account session. Without it, wrangler may attempt OAuth login. First-time use requires ToS acceptance (pipe `yes`).
 
 ## Flow
 
@@ -101,8 +101,14 @@ User: Add a /api/status endpoint that returns JSON
 ### Pattern C: Add a binding (KV, D1, R2)
 ```
 User: Add a KV namespace to store visits
-→ Update wrangler.toml with [[kv_namespaces]] → wrangler deploy
-→ Note: temporary accounts support bindings, but they're also temporary
+→ Step 1: Create namespace with --temporary:
+     "yes" | npx wrangler kv namespace create VISITS --temporary
+     (returns namespace ID, e.g. 624bbb99478b4893831777e9ce6e0218)
+→ Step 2: Update wrangler.toml with [[kv_namespaces]] using the returned ID
+→ Step 3: wrangler deploy --temporary (reuses temp account, binding now valid)
+→ Step 4: Test KV read/write via endpoint
+→ Note: resources are temporary (deleted if account expires unclaimed).
+   After claiming, resources become permanent.
 ```
 
 ### Pattern D: Fix a bug
@@ -136,7 +142,7 @@ The 60-minute clock starts from the **first** temporary deploy:
 | `Worker not found` | Account deleted (60 min passed) | Start fresh with [deploy.md](./deploy.md) — a new temp account and URL will be created |
 | `Build failed` | TypeScript/syntax error | Fix the error, retry deploy |
 | `Rate limit exceeded` | Too many deploys too fast | Wait a few seconds, retry |
-| `Binding not found` | Referenced resource was deleted | Remove binding or recreate with new temp account |
+| `Binding not found` | Referenced resource was deleted | Recreate with `wrangler kv namespace create <name> --temporary` (pipe `yes` for ToS), update ID in `wrangler.toml`, redeploy |
 | New account name appears | 60-min window expired | Inform user the URL changed; update references |
 
 ## Best Practices

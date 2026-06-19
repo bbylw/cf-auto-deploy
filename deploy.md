@@ -42,6 +42,7 @@ Rules:
   - ⚠️ **Must NOT be a future date** — Wrangler rejects future dates with `Compatibility date invalid`
   - Safe default: `2025-06-20` (or any date within the last year)
   - Do not use "today" if you are unsure of the current date — prefer a known-safe past date
+  - 💡 If you know the current system date with certainty, you may use a more recent past date (today or yesterday) to unlock newer edge runtime features. The `2025-06-20` default is a conservative fallback.
 - Do NOT add `account_id` — temporary accounts don't need it
 
 > **Pre-deploy check**: Always open `wrangler.toml` and verify `compatibility_date` is not in the future before running `wrangler deploy`. This is the #1 cause of first-deploy failures.
@@ -71,7 +72,7 @@ Before running `wrangler deploy`, **always** run these local checks to avoid was
 | `compatibility_date` not in future | Read `wrangler.toml`, compare to today | Change to a past date (e.g. `2025-06-20`) |
 | `name` ≤ 63 chars | `len(name)` in config | Shorten to kebab-case slug |
 | `main` file exists | Check file at `main` path | Fix path or create the file |
-| No KV/D1/R2 bindings | Scan `wrangler.toml` for `[[kv_namespaces]]`, `[[d1_databases]]`, `[[r2_buckets]]` | Remove bindings (temp accounts don't support them) or instruct user to claim first |
+| KV/D1/R2 bindings | Scan `wrangler.toml` for `[[kv_namespaces]]`, `[[d1_databases]]`, `[[r2_buckets]]` | If namespace ID exists → deploy normally. If ID is missing/invalid → create with `wrangler kv namespace create <name> --temporary` (wrangler 4.103.0+, pipe `yes` for ToS). Resources are temporary until account is claimed |
 | TypeScript compiles | `npx tsc --noEmit` (optional) | Fix syntax errors |
 
 > **Why pre-check?** Wrangler validates `compatibility_date` and `name` length only at the API stage (after upload), wasting 2-5 seconds per failed attempt. Local checks are instant.
@@ -85,7 +86,14 @@ npx wrangler deploy --temporary
 **First-time use (or after `wrangler logout`)**: Wrangler prompts to accept Cloudflare's Terms of Service. Pipe `yes` to auto-accept in non-interactive contexts:
 
 ```bash
+# Linux / macOS (Bash / Zsh)
 echo "yes" | npx wrangler deploy --temporary
+```
+
+```powershell
+# Windows PowerShell — `echo` is an alias for Write-Output and pipes a String
+# object (not raw stdin), which some Node CLIs fail to read. Use a bare string:
+"yes" | npx wrangler deploy --temporary
 ```
 
 What happens:
@@ -130,10 +138,10 @@ curl -sS -o /dev/null -w "%{http_code}" "<preview-url>"
 | `You're already authenticated... --temporary can't be used` | — | OAuth login was triggered (e.g. by `kv namespace create`) | Run `wrangler logout`, then retry with `--temporary` |
 | `Can't set compatibility date in the future` | 10021 | `compatibility_date` is a future date | Edit `wrangler.toml`, change to a past date (e.g. `2025-06-20`) |
 | `Worker name is too long to be used as a subdomain` | 100132 | Name > 63 chars | Shorten in `wrangler.toml` (pre-check in Step 4) |
-| `KV namespace '...' is not valid` | 10042 | KV binding with non-existent namespace ID | Remove KV binding (temp accounts can't create namespaces) or claim account first |
+| `KV namespace '...' not found` | 10041 | KV binding references a non-existent namespace ID | Create the namespace first: `wrangler kv namespace create <name> --temporary` (pipe `yes` for ToS). Then update the ID in `wrangler.toml` |
 | `The entry-point file at "..." was not found` | — | Wrong `main` path | Check `main` points to existing file |
 | `Build failed with N errors` | — | TypeScript/syntax error | Fix code per error output (esbuild reports line:col) |
-| `? You must accept Cloudflare's Terms of Service` | — | First-time use after logout | Pipe `yes`: `echo "yes" \| npx wrangler deploy --temporary` |
+| `? You must accept Cloudflare's Terms of Service` | — | First-time use after logout | Pipe `yes`: Bash `echo "yes" \| npx wrangler deploy --temporary` · PowerShell `"yes" \| npx wrangler deploy --temporary` |
 | Network error | — | Connectivity | Retry, check internet connection |
 
 ## Examples
