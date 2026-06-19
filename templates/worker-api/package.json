@@ -1,0 +1,13 @@
+{
+  "name": "worker-api",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "deploy": "wrangler deploy --temporary",
+    "dev": "wrangler dev"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.0.0",
+    "wrangler": "^3.0.0"
+  }
+}
